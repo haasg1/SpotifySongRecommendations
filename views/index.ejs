@@ -1,0 +1,123 @@
+<%- include ("_header.ejs"); %>
+
+<body onload="onPageLoad()">
+	<div class="container">
+
+		<div id="tokenSection" class="row">
+		<div class="col">
+			<div class="mb-3">
+				<label for="client_id" class="form-label">Client ID:</label>
+				<input type="text" class="form-control" id="client_id" placeholder=""><br>
+			</div>
+				<div class="mb-3">
+					<label for="client_secret" class="form-label">Client Secret:</label>
+					<input type="text" class="form-control" id="client_secret" placeholder=""><br>
+				</div>
+					<input class="btn btn-primary btn-lg" type="button" onclick="requestAuthorization()" value="Request Authorization"><br/><br/>
+				</div>
+			</div>
+		</div>
+
+	<div class="container">
+		<div id="createPlaylist" class="row">
+			<input class="btn btn-primary btn-lg" type="button" onclick=createPlaylist() value="Create Playlist"><br/><br/>
+		</div>
+	</div>
+
+<script>
+
+//---------------------------------------------------------------------------------------------------------------------------------------------//
+
+var redirect_uri = "http://localhost:5000";
+var client_id = '';
+var client_secret = '';
+var scope = 'user-read-email user-read-private user-library-modify playlist-modify-private playlist-modify-public'
+
+const AUTHORIZE = 'https://accounts.spotify.com/authorize';
+const TOKEN = 'https://accounts.spotify.com/api/token';
+
+
+function onPageLoad() {
+	client_id = localStorage.getItem("client_id");
+	client_secret = localStorage.getItem("client_Secret");
+
+	if (window.location.search.length > 0) {
+		handleRedirect();
+	}
+}
+
+function handleRedirect() {
+	let code = getCode();
+	fetchAccessToken(code)
+	window.history.pushState("", "", redirect_uri);
+}
+
+function fetchAccessToken( code ) {
+	let body = "grant_type=authorization_code";
+	body += '&code=' + code;
+	body += '&redirect_uri=' + redirect_uri;
+	body += '&client_id=' + client_id;
+	body += '&client_secret=' + client_secret;
+	callAuthorizationAPI(body);
+}
+
+function callAuthorizationAPI(body) {
+	let xhr = new XMLHttpRequest();
+	xhr.open("POST", TOKEN, true);
+	xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+	xhr.setRequestHeader('Authorization', 'Basic ' + btoa(client_id + ':' + client_secret));
+	xhr.send(body);
+	xhr.onload = handleAuthorizationResponse;
+}
+
+function handleAuthorizationResponse() {
+	if ( this.status  == 200 ){
+		var data = JSON.parse(this.responseText);
+		console.log(data);
+		var data = JSON.parse(this.responseText);
+		if ( data.access_token != undefined ){
+			access_token = data.access_token;
+			localStorage.setItem('access_token', access_token);
+		}
+		if ( data.refresh_token != undefined ){
+			refresh_token = data.refresh_token;
+			localStorage.setItem('refresh_token', refresh_token);
+		}
+		onPageLoad();
+	}
+	else {
+		console.log(this.responseText);
+		alert(this.responseText);
+	}
+
+}
+function getCode() {
+	let code = null;
+	const queryString = window.location.search;
+	if ( queryString.length > 0 ){
+		const urlParams = new URLSearchParams(queryString);
+		code = urlParams.get('code');
+	}
+	return code;
+}
+
+function requestAuthorization() {
+	client_id = document.getElementById("client_id").value;
+	client_secret = document.getElementById("client_secret").value;
+	localStorage.setItem("client_id", client_id);
+	localStorage.setItem("client_secret", client_secret);
+
+	let url = AUTHORIZE;
+	url += "?client_id=" + client_id;
+	url += "&response_type=code";
+	url += "&redirect_uri=" + encodeURI(redirect_uri);
+	url += "&show_dialog=true";
+	url += "&scope=" + scope;
+	window.location.href = url;
+
+}
+
+</script>
+</body>
+	
+<%- include ("_footer.ejs"); %>
